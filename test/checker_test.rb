@@ -66,6 +66,33 @@ class RedactTest < Minitest::Test
     refute_includes out, 'abc.def'
     assert_includes out, "other"
   end
+  def test_masks_token_only_userinfo
+    out = redact('http://tok@proxy:8080')
+    refute_includes out, 'tok'
+    assert_includes out, 'proxy:8080'
+  end
+
+  def test_masks_password_with_raw_at
+    out = redact('http://bob:p@ss@proxy:8080/x')
+    refute_includes out, 'p@ss'
+    refute_includes out, 'ss@'
+    refute_includes out, 'bob'
+    assert_includes out, '@proxy:8080/x'
+  end
+
+  def test_masks_curl_auth_user_lines
+    ["* Proxy auth using Basic with user 'bob'", "* Server auth using Basic with user 'bob'"].each do |line|
+      out = redact(line)
+      refute_includes out, 'bob'
+      assert_includes out, 'auth using Basic with user'
+    end
+  end
+
+  def test_leaves_plain_text_unchanged
+    ['https://www.googleapis.com/', 'https://h/p?x=a@b', 'mail user@example.com now'].each do |t|
+      assert_equal t, redact(t)
+    end
+  end
 end
 
 class ServerHeaderTest < Minitest::Test
