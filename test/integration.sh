@@ -46,7 +46,6 @@ finish() {
   if [ "$RUN_OK" = 1 ]; then echo "PASS $1"; else echo "FAIL $1"; FAILED=1; fi
 }
 
-row() { grep -E "^$2 +\| " "$OUT/$1.txt"; }
 has() { grep -qE -- "$2" "$OUT/$1.txt"; }
 hasnt() { ! grep -qE -- "$2" "$OUT/$1.txt"; }
 

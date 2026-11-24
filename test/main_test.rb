@@ -53,6 +53,15 @@ class MainTest < Minitest::Test
     assert_match(/^@@\[warning\] AC_CHECK_CONNECTION_TIMEOUT .*"abc".*default/, out)
   end
 
+  def test_unreachable_endpoint_exits_one_after_summary
+    out, _err, status = run_main('AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS' => 'https://127.0.0.1:1/',
+                                 'AC_CHECK_CONNECTION_TIMEOUT' => '2', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '5')
+    assert_equal 1, status.exitstatus
+    assert_match(%r{^https://127\.0\.0\.1:1/ +\| NOT REACHABLE +\| }, out)
+    assert_includes out, '@@[error] 1 of 1 endpoints are not reachable.'
+    assert out.index('| NOT REACHABLE') < out.index('@@[error]')
+  end
+
   def test_bad_timeouts_exit_one
     out, _err, status = run_main('AC_CHECK_CONNECTION_TIMEOUT' => '5', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '3')
     assert_equal 1, status.exitstatus
