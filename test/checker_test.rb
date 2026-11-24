@@ -122,6 +122,30 @@ class RedactTest < Minitest::Test
     assert_includes out, '@127.0.0.1:9'
   end
 
+  def test_masks_password_with_hash_or_question_mark
+    out = redact('http://bob:pa#ss@proxy:3128')
+    assert_equal 'http://***:***@proxy:3128', out
+    out = redact('https://alice:hun?ter@h/')
+    assert_equal 'https://***:***@h/', out
+    out = redact("HTTPS_PROXY == 'http://bob:pa#ss@127.0.0.1:9' and 'u@v'")
+    refute_includes out, 'pa#ss'
+    assert_includes out, "@127.0.0.1:9' and 'u@v'"
+  end
+
+  def test_masks_curl_unsupported_proxy_syntax_lines
+    out = redact("* Unsupported proxy syntax in 'http://bob:pa#ss@127.0.0.1:9'")
+    assert_equal "* Unsupported proxy syntax in 'http://***:***@127.0.0.1:9'", out
+    out = redact("curl: (5) Unsupported proxy syntax in 'tok@127.0.0.1:99999'")
+    assert_equal "curl: (5) Unsupported proxy syntax in '***:***@127.0.0.1:99999'", out
+  end
+
+  def test_unrelated_text_still_unchanged
+    ['https://h?u=a@b.com', 'https://host#f@x', 'https://h/p?x=a@b', 'https_proxy=proxy.corp:3128',
+     'NO_PROXY=localhost,.corp.example,10.0.0.0/8', 'contact admin@example.com for access'].each do |t|
+      assert_equal t, redact(t)
+    end
+  end
+
   def test_already_masked_text_unchanged
     ['http://***:***@proxy:8080', 'HTTPS_PROXY=***:***@127.0.0.1:9',
      "* Uses proxy env variable HTTPS_PROXY == '***:***@127.0.0.1:9'"].each do |t|

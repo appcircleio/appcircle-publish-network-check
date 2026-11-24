@@ -50,6 +50,17 @@ class ConfigTest < Minitest::Test
     assert_equal 'Google Play', selected.first[:store]
   end
 
+  def test_bare_host_extra_url_is_duplicate_of_catalog_url
+    env = {
+      'AC_CHECK_NETWORK_WWW_GOOGLEAPIS_COM' => 'true',
+      'AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS' => 'https://www.googleapis.com, www.googleapis.com'
+    }
+    assert_equal [{ store: 'Google Play', url: 'https://www.googleapis.com/' }], selected_endpoints(env)
+    assert_equal ['https://a.example.com'], parse_extra_urls('a.example.com, https://a.example.com/')
+    assert_equal ['https://a.example.com/x', 'https://a.example.com/x/'],
+                 parse_extra_urls('a.example.com/x, a.example.com/x/')
+  end
+
   def test_extra_urls_are_custom
     env = { 'AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS' => 'x.example.com' }
     assert_equal [{ store: 'Custom', url: 'https://x.example.com' }], selected_endpoints(env)

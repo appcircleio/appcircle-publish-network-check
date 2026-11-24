@@ -62,6 +62,22 @@ class MainTest < Minitest::Test
     assert out.index('| NOT REACHABLE') < out.index('@@[error]')
   end
 
+  def test_proxy_password_with_hash_never_printed
+    server = TCPServer.new('127.0.0.1', 0)
+    port = server.addr[1]
+    server.close
+    out, err, status = run_main('HTTPS_PROXY' => "http://bob:pa#ss@127.0.0.1:#{port}",
+                                'AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS' => 'https://127.0.0.1:1/',
+                                'AC_CHECK_CONNECTION_TIMEOUT' => '2', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '5')
+    assert_equal 1, status.exitstatus
+    assert_includes out, '@@[error] 1 of 1 endpoints are not reachable.'
+    assert_includes out, 'HTTPS_PROXY=http://***:***@127.0.0.1:'
+    [out, err].each do |text|
+      refute_includes text, 'pa#ss'
+      refute_includes text, 'Ym9iOnBhI3Nz'
+    end
+  end
+
   def test_bad_timeouts_exit_one
     out, _err, status = run_main('AC_CHECK_CONNECTION_TIMEOUT' => '5', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '3')
     assert_equal 1, status.exitstatus

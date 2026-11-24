@@ -31,8 +31,9 @@ end
 def redact(text)
   utf8(text)
       .gsub(%r{([a-zA-Z][a-zA-Z0-9+.-]*://)[^/?#\s]*@}, '\1***:***@')
+      .gsub(%r{([a-zA-Z][a-zA-Z0-9+.-]*://)[^/?#\s:@'"]+:[^/\s'"]*@}, '\1***:***@')
       .gsub(%r{(?<![:/\w.*-])[^\s'"/:@=*]+:[^\s'"/]*@}, '***:***@')
-      .gsub(%r{(proxy env variable \w+ == ')[^'\s/]*@}i, "\\1***:***@")
+      .gsub(%r{((?:proxy env variable \w+ ==|unsupported proxy syntax in) ')[^'\s/]*@}i, "\\1***:***@")
       .gsub(/(auth using \w+ with user )'[^']*'/i, "\\1'***'")
       .gsub(/((?:proxy-)?authorization:[ \t]*)[^\r\n]*/i, '\1***')
 end

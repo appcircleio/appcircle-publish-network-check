@@ -50,7 +50,7 @@ Timeout rules:
 Extra URL rules:
 
 - `https://` is added to items without a scheme.
-- Duplicates are removed, including URLs that a store input already checks.
+- Duplicates are removed, including URLs that a store input already checks. A host-only URL with or without a trailing `/` (for example `https://www.googleapis.com` and `https://www.googleapis.com/`) counts as the same URL.
 - Items that start with `$` (an unexpanded variable such as the default `$AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS`) are ignored.
 - Extra URLs are shown under the store group `Custom`.
 

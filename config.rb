@@ -18,18 +18,23 @@ def enabled?(env, key)
   env[key].to_s.strip.downcase == 'true'
 end
 
+# A bare-host URL and the same URL with a trailing "/" are the same endpoint.
+def dedupe_key(url)
+  url =~ %r{\A[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*\z} ? "#{url}/" : url
+end
+
 def parse_extra_urls(value)
   items = value.to_s.split(',').map(&:strip)
   # "$NAME" is an unexpanded variable reference (for example the input's own default), not a URL.
   items.reject { |u| u.empty? || u.start_with?('$') }.map do |u|
     u =~ %r{\A[a-zA-Z][a-zA-Z0-9+.-]*://} ? u : "https://#{u}"
-  end.uniq
+  end.uniq { |u| dedupe_key(u) }
 end
 
 def selected_endpoints(env = ENV)
   selected = ENDPOINTS.select { |e| enabled?(env, e[:env]) }.map { |e| { store: e[:store], url: e[:url] } }
   parse_extra_urls(env[EXTRA_URLS_ENV]).each { |u| selected << { store: 'Custom', url: u } }
-  selected.uniq { |e| e[:url] }
+  selected.uniq { |e| dedupe_key(e[:url]) }
 end
 
 # Reads one timeout input; a non-integer value falls back to the default, with a note when the value was set.
