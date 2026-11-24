@@ -120,6 +120,27 @@ class RedactTest < Minitest::Test
   end
 end
 
+class EncodingTest < Minitest::Test
+  def test_redact_survives_invalid_utf8
+    out = redact("< Server: caf\xE9\n> Proxy-Authorization: Basic abc\n".b)
+    assert_equal Encoding::UTF_8, out.encoding
+    assert out.valid_encoding?
+    assert_includes out, '< Server: caf?'
+    refute_includes out, 'abc'
+  end
+
+  def test_redact_survives_us_ascii_with_high_bytes
+    text = "< Server: Kurumsal G\u00fcvenlik Duvar\u0131\n".b.force_encoding(Encoding::US_ASCII)
+    assert_includes redact(text), "Kurumsal G\u00fcvenlik Duvar\u0131"
+  end
+
+  def test_server_header_survives_invalid_bytes
+    assert_equal 'caf?', server_header("< Server: caf\xE9\r\n".b)
+    text = "< Server: G\u00fcvenlik\n".b.force_encoding(Encoding::US_ASCII)
+    assert_equal "G\u00fcvenlik", server_header(text)
+  end
+end
+
 class ServerHeaderTest < Minitest::Test
   def test_extracts_server
     assert_equal 'squid', server_header("< HTTP/1.1 403 Forbidden\n< Server: squid\n< Content-Length: 0\n")
@@ -167,6 +188,25 @@ class CheckTest < Minitest::Test
     assert_equal 'unit-test', server_header(result.trace)
     assert_equal 'Custom', result.store
     assert_equal endpoint[:url], result.url
+  end
+
+  def test_non_utf8_server_header_does_not_crash
+    server = TCPServer.new('127.0.0.1', 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      client = server.accept
+      while (line = client.gets) && line != "\r\n"; end
+      client.write("HTTP/1.1 403 Forbidden\r\nServer: caf\xE9 proxy\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".b)
+      client.close
+    end
+    result = nil
+    capture_io { result = check({ store: 'Custom', url: "http://127.0.0.1:#{port}/" }, 5, 10) }
+    thread.join(5)
+    server.close
+    assert_kind_of Result, result
+    assert_equal :reachable, result.status
+    assert_equal 403, result.http_code
+    assert_equal 'caf? proxy', server_header(result.trace)
   end
 
   def test_unreachable_when_nothing_listens

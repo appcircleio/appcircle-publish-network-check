@@ -20,7 +20,7 @@ HUAWEI_ROW = ['Huawei upload host (*.obs.*.otc.t-systems.com)', 'NOT CHECKED',
 def print_environment(env = ENV, io = $stdout)
   begin
     out, _err, _status = Open3.capture3('curl', '-V')
-    io.puts out.lines.first.to_s.strip
+    io.puts utf8(out).lines.first.to_s.strip
   rescue SystemCallError => e
     io.puts "@@[warning] Could not run curl -V: #{e.message}"
   end

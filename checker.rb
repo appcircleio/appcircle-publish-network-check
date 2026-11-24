@@ -20,8 +20,14 @@ def classify(exit_code:, http_code:, connect_code:)
   end
 end
 
+# curl output and env values may carry bytes that are not valid in the locale encoding
+# (e.g. LANG=C, or a Latin-1 certificate issuer); treat them as UTF-8 and replace bad bytes.
+def utf8(text)
+  text.to_s.dup.force_encoding(Encoding::UTF_8).scrub('?')
+end
+
 def redact(text)
-  text.to_s
+  utf8(text)
       .gsub(%r{([a-zA-Z][a-zA-Z0-9+.-]*://)[^/?#\s]*@}, '\1***:***@')
       .gsub(%r{(?<![:/\w.*-])[^\s'"/:@=*]+:[^\s'"/]*@}, '***:***@')
       .gsub(%r{(proxy env variable \w+ == ')[^'\s/]*@}i, "\\1***:***@")
@@ -31,7 +37,7 @@ end
 
 def server_header(trace)
   value = nil
-  trace.to_s.each_line do |line|
+  utf8(trace).each_line do |line|
     m = line.match(/\A<\s*server:\s*(.*?)\s*\z/i)
     value = m[1] if m
   end
@@ -39,9 +45,10 @@ def server_header(trace)
 end
 
 def parse_metrics(stdout)
-  code = stdout.to_s[/"code":"(\d*)"/, 1].to_i
-  connect = stdout.to_s[/"connect":"(\d*)"/, 1].to_i
-  time = stdout.to_s[/"time_total":"([0-9.]*)"/, 1].to_f
+  text = utf8(stdout)
+  code = text[/"code":"(\d*)"/, 1].to_i
+  connect = text[/"connect":"(\d*)"/, 1].to_i
+  time = text[/"time_total":"([0-9.]*)"/, 1].to_f
   [code, connect, time]
 end
 
