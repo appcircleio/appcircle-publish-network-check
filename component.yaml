@@ -1,13 +1,37 @@
-platform: iOS
+platform: Common
 purpose: Publish
 buildPlatform:
 displayName: "Check Network Access"
-description: "Checks runner access to the App Store endpoints used by the Appcircle publish module."
+description: "Checks runner access to the store endpoints (App Store, Google Play, Huawei AppGallery) used by the Appcircle publish module."
 docsUrl: https://docs.appcircle.io/publish-integrations/common-publish-integrations/check-network-access
 requiredComponents:
 precedingComponents:
 followingComponents:
 inputs:
+  - key: "AC_CHECK_NETWORK_WWW_GOOGLEAPIS_COM"
+    title: "Check Google APIs Access"
+    description: "Checks if the runner can access `https://www.googleapis.com/` when enabled."
+    defaultValue: "true"
+    isRequired: false
+    editorType: "select"
+    options: "true,false"
+    helpText: ""
+  - key: "AC_CHECK_NETWORK_ANDROIDPUBLISHER_GOOGLEAPIS_COM"
+    title: "Check Google Play Android Publisher API Access"
+    description: "Checks if the runner can access `https://androidpublisher.googleapis.com/` when enabled."
+    defaultValue: "true"
+    isRequired: false
+    editorType: "select"
+    options: "true,false"
+    helpText: ""
+  - key: "AC_CHECK_NETWORK_CONNECT_API_CLOUD_HUAWEI_COM"
+    title: "Check Huawei AppGallery Connect API Access"
+    description: "Checks if the runner can access `https://connect-api.cloud.huawei.com/` when enabled. The dynamic upload host is not checked; add it to the custom URL input if you know it."
+    defaultValue: "true"
+    isRequired: false
+    editorType: "select"
+    options: "true,false"
+    helpText: ""
   - key: "AC_CHECK_NETWORK_API_APPSTORECONNECT_APPLE_COM"
     title: "Check App Store Connect API Access"
     description: "Checks if the runner can access `https://api.appstoreconnect.apple.com/` when enabled."

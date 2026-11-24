@@ -7,7 +7,7 @@ One script (`main.rb`) backs both components:
 - `appcircle_publish_check_network_access_ios`: App Store endpoints.
 - `appcircle_publish_check_network_access_android`: Google Play and Huawei AppGallery endpoints.
 
-The mirrors of the registry files are `component-ios.yaml` and `component-android.yaml`.
+`component.yaml` is the platform-neutral definition with every input. The registry (`appcircle-publishflow-components`) registers it as two entries: `appcircle_publish_check_network_access_ios` (App Store inputs) and `appcircle_publish_check_network_access_android` (Google Play and Huawei AppGallery inputs).
 
 Only the endpoints listed under the inputs below are checked. Some hosts on the Publish list of the self-hosted Network Access page are not checked by default, for example `idmsa.apple.com`, `transporter.amp.apple.com` and the `store-0xx.blobstore.apple.com` hosts. Add them to `AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS` if you need them checked. If you don't publish to a store, set that store's inputs to `false`.
 
