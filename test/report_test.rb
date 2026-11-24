@@ -33,6 +33,14 @@ class SummaryTableTest < Minitest::Test
     assert_equal expected, summary_table([ok_result, bad_result], huawei_not_checked: false)
   end
 
+  def test_url_credentials_masked_in_summary
+    r = bad_result
+    r.url = 'https://alice:hunter2@127.0.0.1:1/'
+    table = summary_table([r], huawei_not_checked: false)
+    refute_includes table, 'hunter2'
+    assert_includes table, 'https://***:***@127.0.0.1:1/ | NOT REACHABLE'
+  end
+
   def test_huawei_row_present_only_when_flagged
     with = summary_table([ok_result], huawei_not_checked: true)
     without = summary_table([ok_result], huawei_not_checked: false)
@@ -76,6 +84,21 @@ class PrintResultTest < Minitest::Test
     io = StringIO.new
     print_result(r, io)
     assert_includes strip_ansi(io.string), 'squid/5.0'
+  end
+
+  def test_url_credentials_never_printed
+    r = bad_result
+    r.store = 'Custom'
+    r.url = 'https://alice:hunter2@127.0.0.1:1/'
+    io = StringIO.new
+    print_result(r, io)
+    refute_includes io.string, 'hunter2'
+    assert_includes strip_ansi(io.string), '[Custom] https://***:***@127.0.0.1:1/'
+    r.url = 'http://alice:hunter2@exa mple/'
+    io = StringIO.new
+    print_result(r, io)
+    refute_includes io.string, 'hunter2'
+    assert_includes io.string, 'DNS lookup skipped'
   end
 
   def test_unparseable_url_does_not_crash
@@ -122,6 +145,15 @@ class PrintEnvironmentTest < Minitest::Test
     assert_includes io.string, 'NO_PROXY=localhost'
     refute_includes io.string, 'secret'
     refute_includes io.string, 'none set'
+  end
+
+  def test_masks_scheme_less_proxy_credentials
+    io = StringIO.new
+    print_environment({ 'HTTPS_PROXY' => 'bob:s3cret@127.0.0.1:9', 'all_proxy' => 'tok@127.0.0.1:9' }, io)
+    assert_includes io.string, 'HTTPS_PROXY=***:***@127.0.0.1:9'
+    assert_includes io.string, 'all_proxy=***:***@127.0.0.1:9'
+    refute_includes io.string, 's3cret'
+    refute_includes io.string, 'tok@'
   end
 
   def test_prints_curl_version

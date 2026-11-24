@@ -87,4 +87,14 @@ check "DNS lookup line" has run-d 'DNS lookup'
 check "error line" has run-d '^@@\[error\] 2 of 2 endpoints are not reachable\.'
 finish "run D (DNS and TLS failures)"
 
+# Run E: same as B, proxy URL without a scheme
+RUN_OK=1
+run run-e $(stores_on) "HTTPS_PROXY=bob:s3cret@127.0.0.1:$PORT"
+check "exit code 1 (got $CODE)" test "$CODE" = 1
+check "androidpublisher row refused CONNECT 403" has run-e '^https://androidpublisher\.googleapis\.com/ +\| NOT REACHABLE +\| proxy refused CONNECT \(HTTP 403\)'
+check "6 REACHABLE rows" test "$(grep -cE '^https://[^ ]+ +\| REACHABLE' "$OUT/run-e.txt")" = 6
+check "masked env line" has run-e '^  HTTPS_PROXY=\*\*\*:\*\*\*@127\.0\.0\.1:'
+check "no secret" hasnt run-e 's3cret|Ym9iOnMzY3JldA'
+finish "run E (scheme-less proxy URL with credentials)"
+
 exit "$FAILED"

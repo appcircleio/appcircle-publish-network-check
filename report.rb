@@ -29,8 +29,16 @@ def print_environment(env = ENV, io = $stdout)
     io.puts 'Proxy/CA environment: none set'
   else
     io.puts 'Proxy/CA environment:'
-    set_vars.each { |name| io.puts "  #{name}=#{redact(env[name])}" }
+    set_vars.each { |name| io.puts "  #{name}=#{env_value(name, env[name])}" }
   end
+end
+
+# Proxy variables hold a URL, so a scheme-less "user@host" value is userinfo, not an e-mail address.
+def env_value(name, value)
+  shown = redact(value)
+  return shown unless name =~ /proxy\z/i && name !~ /\Ano_proxy\z/i
+
+  shown.sub(%r{\A[^\s/:@]+@}, '***:***@')
 end
 
 def dns_lookup(host)
@@ -43,7 +51,7 @@ end
 def print_result(result, io = $stdout)
   reachable = result.status == :reachable
   word = reachable ? "#{GREEN}REACHABLE#{RESET}" : "#{RED}NOT REACHABLE#{RESET}"
-  io.puts "[#{result.store}] #{result.url}"
+  io.puts "[#{result.store}] #{redact(result.url)}"
   io.puts "  Result: #{word}"
   io.puts "  HTTP status: #{result.http_code}"
   io.puts "  Time: #{format('%.3f', result.time_total.to_f)}s"
@@ -62,7 +70,7 @@ def print_result(result, io = $stdout)
   rescue URI::InvalidURIError
     nil
   end
-  io.puts host ? "  #{dns_lookup(host)}" : "  DNS lookup skipped: could not parse host from #{result.url}"
+  io.puts host ? "  #{dns_lookup(host)}" : "  DNS lookup skipped: could not parse host from #{redact(result.url)}"
 end
 
 def huawei_warning
@@ -74,7 +82,7 @@ end
 
 def summary_table(results, huawei_not_checked:)
   rows = results.map do |r|
-    [r.url, r.status == :reachable ? 'REACHABLE' : 'NOT REACHABLE', r.reason.to_s]
+    [redact(r.url), r.status == :reachable ? 'REACHABLE' : 'NOT REACHABLE', r.reason.to_s]
   end
   rows << HUAWEI_ROW if huawei_not_checked
   header = %w[Endpoint Result Reason]

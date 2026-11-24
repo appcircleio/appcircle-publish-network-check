@@ -89,7 +89,32 @@ class RedactTest < Minitest::Test
   end
 
   def test_leaves_plain_text_unchanged
-    ['https://www.googleapis.com/', 'https://h/p?x=a@b', 'mail user@example.com now'].each do |t|
+    ['https://www.googleapis.com/', 'https://h/p?x=a@b', 'mail user@example.com now',
+     'https_proxy=proxy.corp:3128', 'https://h?u=a@b.com', 'https://host#f@x'].each do |t|
+      assert_equal t, redact(t)
+    end
+  end
+
+  def test_masks_scheme_less_proxy_userinfo_in_env_line
+    out = redact('HTTPS_PROXY=bob:s3cret@127.0.0.1:9')
+    assert_equal 'HTTPS_PROXY=***:***@127.0.0.1:9', out
+    assert_equal '***:***@127.0.0.1:9', redact('bob:s3cret@127.0.0.1:9')
+  end
+
+  def test_masks_scheme_less_proxy_userinfo_in_curl_trace
+    out = redact("* Uses proxy env variable HTTPS_PROXY == 'bob:s3cret@127.0.0.1:9'")
+    assert_equal "* Uses proxy env variable HTTPS_PROXY == '***:***@127.0.0.1:9'", out
+  end
+
+  def test_masks_scheme_less_token_only_userinfo_in_curl_trace
+    out = redact("* Uses proxy env variable https_proxy == 'tok@127.0.0.1:9'")
+    refute_includes out, 'tok'
+    assert_includes out, '@127.0.0.1:9'
+  end
+
+  def test_already_masked_text_unchanged
+    ['http://***:***@proxy:8080', 'HTTPS_PROXY=***:***@127.0.0.1:9',
+     "* Uses proxy env variable HTTPS_PROXY == '***:***@127.0.0.1:9'"].each do |t|
       assert_equal t, redact(t)
     end
   end
