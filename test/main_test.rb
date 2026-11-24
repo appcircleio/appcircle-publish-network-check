@@ -47,6 +47,12 @@ class MainTest < Minitest::Test
     assert_includes out, "There aren't any URLs given to the component, exiting."
   end
 
+  def test_timeout_fallback_is_printed
+    out, _err, status = run_main('AC_CHECK_CONNECTION_TIMEOUT' => 'abc')
+    assert_equal 0, status.exitstatus
+    assert_match(/^@@\[warning\] AC_CHECK_CONNECTION_TIMEOUT .*"abc".*default/, out)
+  end
+
   def test_bad_timeouts_exit_one
     out, _err, status = run_main('AC_CHECK_CONNECTION_TIMEOUT' => '5', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '3')
     assert_equal 1, status.exitstatus

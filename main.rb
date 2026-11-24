@@ -2,9 +2,12 @@ require_relative 'config'
 require_relative 'checker'
 require_relative 'report'
 
+timeout_notes = []
 begin
-  connect_timeout, max_time = read_timeouts
+  connect_timeout, max_time = read_timeouts(ENV, timeout_notes)
+  timeout_notes.each { |note| puts note }
 rescue ArgumentError => e
+  timeout_notes.each { |note| puts note }
   puts "@@[error] #{e.message}"
   exit 1
 end

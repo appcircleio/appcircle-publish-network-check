@@ -34,6 +34,12 @@ class ConfigTest < Minitest::Test
                  parse_extra_urls(' a.example.com, https://b.example.com ,,https://b.example.com,')
   end
 
+  def test_parse_extra_urls_ignores_unexpanded_variables
+    assert_equal ['https://a.example.com'],
+                 parse_extra_urls('$AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS, a.example.com, $OTHER')
+    assert_equal [], parse_extra_urls('$AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS')
+  end
+
   def test_extra_duplicate_of_catalog_dropped
     env = {
       'AC_CHECK_NETWORK_WWW_GOOGLEAPIS_COM' => 'true',
@@ -47,6 +53,26 @@ class ConfigTest < Minitest::Test
   def test_extra_urls_are_custom
     env = { 'AC_CHECK_NETWORK_EXTRA_URL_PARAMETERS' => 'x.example.com' }
     assert_equal [{ store: 'Custom', url: 'https://x.example.com' }], selected_endpoints(env)
+  end
+
+  def test_timeout_fallback_notes
+    notes = []
+    assert_equal [8, 20], read_timeouts({}, notes)
+    assert_equal [], notes
+
+    notes = []
+    assert_equal [8, 30], read_timeouts({ 'AC_CHECK_CONNECTION_TIMEOUT' => 'abc', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '30' }, notes)
+    assert_equal 1, notes.size
+    assert notes.first.start_with?('@@[warning]')
+    assert_includes notes.first, 'AC_CHECK_CONNECTION_TIMEOUT'
+    assert_includes notes.first, '"abc"'
+    assert_includes notes.first, '8'
+
+    notes = []
+    assert_equal [8, 20], read_timeouts({ 'AC_CHECK_CONNECTION_TIMEOUT' => '5', 'AC_CHECK_CONNECTION_MAX_TIMEOUT' => '0' }, notes)
+    assert_equal 1, notes.size
+    assert_includes notes.first, 'greater than 0'
+    assert_includes notes.first, '8 and 20'
   end
 
   def test_timeouts

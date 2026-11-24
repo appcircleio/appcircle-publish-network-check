@@ -7,7 +7,9 @@ Result = Struct.new(:store, :url, :status, :reason, :http_code, :connect_code, :
 WRITE_OUT = '{"code":"%{http_code}","connect":"%{http_connect}","time_total":"%{time_total}"}'.freeze
 
 def classify(exit_code:, http_code:, connect_code:)
-  if ![0, 200].include?(connect_code)
+  if connect_code == 407
+    [:unreachable, 'proxy authentication required (HTTP 407)']
+  elsif ![0, 200].include?(connect_code)
     [:unreachable, "proxy refused CONNECT (HTTP #{connect_code})"]
   elsif http_code == 407
     [:unreachable, 'proxy authentication required (HTTP 407)']

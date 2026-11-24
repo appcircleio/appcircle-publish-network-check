@@ -19,7 +19,9 @@ def enabled?(env, key)
 end
 
 def parse_extra_urls(value)
-  value.to_s.split(',').map(&:strip).reject(&:empty?).map do |u|
+  items = value.to_s.split(',').map(&:strip)
+  # "$NAME" is an unexpanded variable reference (for example the input's own default), not a URL.
+  items.reject { |u| u.empty? || u.start_with?('$') }.map do |u|
     u =~ %r{\A[a-zA-Z][a-zA-Z0-9+.-]*://} ? u : "https://#{u}"
   end.uniq
 end
@@ -30,10 +32,22 @@ def selected_endpoints(env = ENV)
   selected.uniq { |e| e[:url] }
 end
 
-def read_timeouts(env = ENV)
-  connect = Integer(env['AC_CHECK_CONNECTION_TIMEOUT'].to_s.strip) rescue DEFAULT_CONNECT_TIMEOUT
-  max = Integer(env['AC_CHECK_CONNECTION_MAX_TIMEOUT'].to_s.strip) rescue DEFAULT_MAX_TIMEOUT
+# Reads one timeout input; a non-integer value falls back to the default, with a note when the value was set.
+def read_timeout(env, key, default, notes)
+  value = env[key].to_s.strip
+  Integer(value, 10)
+rescue ArgumentError, TypeError
+  notes << "@@[warning] #{key} value #{value.inspect} is not an integer, using the default (#{default})." unless value.empty?
+  default
+end
+
+# Returns [connect, max]. Fallback messages are appended to notes for the caller to print.
+def read_timeouts(env = ENV, notes = [])
+  connect = read_timeout(env, 'AC_CHECK_CONNECTION_TIMEOUT', DEFAULT_CONNECT_TIMEOUT, notes)
+  max = read_timeout(env, 'AC_CHECK_CONNECTION_MAX_TIMEOUT', DEFAULT_MAX_TIMEOUT, notes)
   if connect <= 0 || max <= 0
+    notes << '@@[warning] Timeout values must be greater than 0, setting both back to the defaults ' \
+             "(#{DEFAULT_CONNECT_TIMEOUT} and #{DEFAULT_MAX_TIMEOUT})."
     connect = DEFAULT_CONNECT_TIMEOUT
     max = DEFAULT_MAX_TIMEOUT
   end

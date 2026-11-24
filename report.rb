@@ -10,6 +10,10 @@ ENV_VARS_TO_SHOW = %w[
   SSL_CERT_FILE CURL_CA_BUNDLE
 ].freeze
 
+# Proxy variables curl reads for https:// and http:// URLs (curl ignores uppercase HTTP_PROXY).
+HTTPS_PROXY_VARS = %w[https_proxy HTTPS_PROXY ALL_PROXY all_proxy].freeze
+HTTP_PROXY_VARS = %w[http_proxy ALL_PROXY all_proxy].freeze
+
 GREEN = "\e[32m".freeze
 RED = "\e[31m".freeze
 RESET = "\e[0m".freeze
@@ -31,6 +35,20 @@ def print_environment(env = ENV, io = $stdout)
     io.puts 'Proxy/CA environment:'
     set_vars.each { |name| io.puts "  #{name}=#{env_value(name, env[name])}" }
   end
+  http_only = (set_vars & %w[HTTP_PROXY http_proxy]).any? && (set_vars & HTTPS_PROXY_VARS).empty?
+  io.puts '  Note: HTTP_PROXY/http_proxy is not used for https:// endpoints (curl uses HTTPS_PROXY or ALL_PROXY).' if http_only
+end
+
+# Whether curl would send a request for this URL through a proxy from the environment.
+def proxy_applies?(uri, env)
+  vars = uri.scheme.to_s.downcase == 'https' ? HTTPS_PROXY_VARS : HTTP_PROXY_VARS
+  return false if vars.none? { |name| !env[name].to_s.strip.empty? }
+
+  no_proxy = env['no_proxy'].to_s.strip.empty? ? env['NO_PROXY'].to_s : env['no_proxy'].to_s
+  host = uri.host.to_s.downcase
+  no_proxy.split(',').map { |e| e.strip.downcase.sub(/\A\./, '') }.reject(&:empty?).none? do |entry|
+    entry == '*' || host == entry || host.end_with?(".#{entry}")
+  end
 end
 
 # Proxy variables hold a URL, so a scheme-less "user@host" value is userinfo, not an e-mail address.
@@ -48,7 +66,7 @@ rescue StandardError => e
   "DNS lookup failed: #{e.message}"
 end
 
-def print_result(result, io = $stdout)
+def print_result(result, io = $stdout, env = ENV)
   reachable = result.status == :reachable
   word = reachable ? "#{GREEN}REACHABLE#{RESET}" : "#{RED}NOT REACHABLE#{RESET}"
   io.puts "[#{result.store}] #{redact(result.url)}"
@@ -65,12 +83,18 @@ def print_result(result, io = $stdout)
   io.puts "  curl exit #{result.exit_code}: #{CURL_EXIT_MESSAGES[result.exit_code] || 'Unknown exit code'}"
   io.puts '  curl -v trace:'
   io.puts result.trace
-  host = begin
-    URI.parse(result.url).host
+  uri = begin
+    URI.parse(result.url)
   rescue URI::InvalidURIError
     nil
   end
-  io.puts host ? "  #{dns_lookup(host)}" : "  DNS lookup skipped: could not parse host from #{redact(result.url)}"
+  host = uri && uri.host
+  unless host
+    io.puts "  DNS lookup skipped: could not parse host from #{redact(result.url)}"
+    return
+  end
+  note = proxy_applies?(uri, env) ? ' (local DNS is not needed when a proxy is used)' : ''
+  io.puts "  #{dns_lookup(host)}#{note}"
 end
 
 def huawei_warning

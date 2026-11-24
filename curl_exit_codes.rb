@@ -29,5 +29,6 @@ CURL_EXIT_MESSAGES = {
   97 => "Operation failed in SSL layer",
   98 => "HTTP/3 error",
   99 => "QUIC connection error",
-  100 => "Other connection setup error"
+  100 => "Other connection setup error",
+  127 => "curl not found on PATH"
 }.freeze

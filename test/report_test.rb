@@ -101,6 +101,25 @@ class PrintResultTest < Minitest::Test
     assert_includes io.string, 'DNS lookup skipped'
   end
 
+  def test_dns_line_notes_proxy
+    proxy_note = '(local DNS is not needed when a proxy is used)'
+    [
+      [{ 'HTTPS_PROXY' => 'http://p:3128' }, true],
+      [{ 'all_proxy' => 'http://p:3128' }, true],
+      [{ 'https_proxy' => 'http://p:3128', 'NO_PROXY' => 'localhost,.invalid' }, false],
+      [{ 'https_proxy' => 'http://p:3128', 'no_proxy' => 'does-not-exist.invalid' }, false],
+      [{ 'https_proxy' => 'http://p:3128', 'NO_PROXY' => '*' }, false],
+      [{ 'https_proxy' => 'http://p:3128', 'NO_PROXY' => 'other.invalid' }, true],
+      [{ 'HTTP_PROXY' => 'http://p:3128', 'http_proxy' => 'http://p:3128' }, false],
+      [{}, false]
+    ].each do |env, expected|
+      io = StringIO.new
+      print_result(bad_result, io, env)
+      line = io.string.lines.find { |l| l.include?('DNS lookup') }
+      assert_equal expected, line.include?(proxy_note), "#{env.inspect}: #{line}"
+    end
+  end
+
   def test_unparseable_url_does_not_crash
     r = bad_result
     r.url = 'http://exa mple/'
@@ -154,6 +173,19 @@ class PrintEnvironmentTest < Minitest::Test
     assert_includes io.string, 'all_proxy=***:***@127.0.0.1:9'
     refute_includes io.string, 's3cret'
     refute_includes io.string, 'tok@'
+  end
+
+  def test_notes_http_proxy_only
+    note = 'not used for https:// endpoints'
+    io = StringIO.new
+    print_environment({ 'HTTP_PROXY' => 'http://p:3128' }, io)
+    assert_includes io.string, note
+    io = StringIO.new
+    print_environment({ 'http_proxy' => 'http://p:3128', 'HTTPS_PROXY' => 'http://p:3128' }, io)
+    refute_includes io.string, note
+    io = StringIO.new
+    print_environment({ 'NO_PROXY' => 'localhost' }, io)
+    refute_includes io.string, note
   end
 
   def test_prints_curl_version

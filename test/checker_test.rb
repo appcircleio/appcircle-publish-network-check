@@ -11,6 +11,16 @@ class ClassifyTest < Minitest::Test
     assert_equal [:unreachable, 'proxy refused CONNECT (HTTP 502)'], c(0, 0, 502)
   end
 
+  def test_rule1_connect_407_is_proxy_auth
+    assert_equal [:unreachable, 'proxy authentication required (HTTP 407)'], c(56, 0, 407)
+    assert_equal [:unreachable, 'proxy authentication required (HTTP 407)'], c(0, 0, 407)
+  end
+
+  def test_rule3_curl_not_found
+    assert_equal [:unreachable, 'curl not found on PATH (curl exit 127)'], c(127, 0)
+    assert_equal 'curl not found on PATH', CURL_EXIT_MESSAGES[127]
+  end
+
   def test_rule1_wins_over_curl_error
     assert_equal [:unreachable, 'proxy refused CONNECT (HTTP 403)'], c(56, 0, 403)
   end
